@@ -1,41 +1,45 @@
 from fastapi import HTTPException
-from auth import hash_password, verify_password
-from models import users_db, books_db, book_id_counter, User, Book
+from sqlalchemy.orm import Session
+from models import Book
+from schemas import BookCreate
 
-def register_user(user: User):
-    if user.username in users_db:
-        raise HTTPException(status_code=400, detail="Username already exists")
-    users_db[user.username] = hash_password(user.password)
-    return {"message": "User registered successfully"}
+def list_books(db: Session):
+    return db.query(Book).all()
 
-def authenticate_user(user: User):
-    if user.username not in users_db or not verify_password(user.password, users_db[user.username]):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-    return user.username
+def add_book(db: Session, book: BookCreate):
+    new_book = Book(**book.dict())
+    db.add(new_book)
+    db.commit()
+    db.refresh(new_book)
+    return new_book
 
-def list_books():
-    return list(books_db.values())
 
-def add_book(book: Book):
-    global book_id_counter
-    book_id = book_id_counter
-    books_db[book_id] = book.dict()
-    book_id_counter += 1
-    return {"book_id": book_id, "details": book.dict()}
 
-def get_book(book_id: int):
-    if book_id not in books_db:
+
+def get_book(db: Session, book_id: int):
+    db_book = db.query(Book).filter(Book.id == book_id).first()
+    if not db_book:
         raise HTTPException(status_code=404, detail="Book not found")
-    return books_db[book_id]
+    return db_book
 
-def update_book(book_id: int, book: Book):
-    if book_id not in books_db:
-        raise HTTPException(status_code=404, detail="Book not found")
-    books_db[book_id] = book.dict()
-    return {"message": "Book updated successfully", "details": book.dict()}
 
-def delete_book(book_id: int):
-    if book_id not in books_db:
+
+def update_book(db: Session, book_id: int, book: BookCreate):
+    db_book = db.query(Book).filter(Book.id == book_id).first()
+    if not db_book:
         raise HTTPException(status_code=404, detail="Book not found")
-    del books_db[book_id]
+    for key, value in book.dict().items():
+        setattr(db_book, key, value)
+    db.commit()
+    db.refresh(db_book)
+    return db_book
+
+
+
+def delete_book(db: Session, book_id: int):
+    db_book = db.query(Book).filter(Book.id == book_id).first()
+    if not db_book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    db.delete(db_book)
+    db.commit()
     return {"message": "Book deleted successfully"}

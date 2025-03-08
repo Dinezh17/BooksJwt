@@ -1,15 +1,19 @@
-from pydantic import BaseModel
-
-class User(BaseModel):
-    username: str
-    password: str
-
-class Book(BaseModel):
-    title: str
-    author: str
-    published_year: int
+from sqlalchemy import Column, Integer, String
+from database import Base
 
 
-users_db = {}
-books_db = {}
-book_id_counter = 1
+
+
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+
+class Book(Base):
+    __tablename__ = "books"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    author = Column(String)
+    published_year = Column(Integer)
